@@ -16,27 +16,42 @@ namespace eval tg::sprite {
         incr index
         tg::picture $x $y [lindex $sprite 0] [lindex $sprite $index]
     }
+	
+	namespace eval animate {
+		proc loop {x y  sprite delay rendercmd index id} {
+
+			set mods [$rendercmd [tg::sprite::draw $x $y $sprite $index] $x $y $sprite $id]
+			
+			foreach {var val} $mods {
+				switch $var {
+					x -
+					y -
+					sprite {
+						set $var $val
+					}
+					default {
+						error "Unsupported variable in return dict: $var"
+					}
+				}
+			}
+			
+			set index [expr {($index+1)%([llength $sprite]-1)}]
+		
+			set animations($id) [after $delay [
+				list tg::sprite::animate::loop $x $y $sprite $delay $rendercmd $index $id]
+			]
+		}
+	}
     
-    proc animate {x y sprite delay {tweenscript ""} {index 0} {id 0}} {
+    proc animate {x y sprite delay rendercmd} {
         variable last_id
         variable animations
         
-        if {!$id} {
-            set id [incr last_id]
-        }
-        
-        eval $tweenscript
-        
-        puts [draw $x $y $sprite $index]
-        set index [expr {($index+1)%([llength $sprite]-1)}]
-        
-        set animations($id) [after $delay [
-            list tg::sprite::animate $x $y $sprite $delay $tweenscript $index $id]
-        ]
-        
+        set id [incr last_id]
+		animate::loop $x $y $sprite $delay $rendercmd 0 $id      
         return $id
     }
-    
+	
     proc changeColor {sprite search replace} {
         set colorSpec [lindex $sprite 0]
         
